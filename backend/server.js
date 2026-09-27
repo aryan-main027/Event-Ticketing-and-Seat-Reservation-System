@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import pool from "./src/db/pool.js";
 import bcrypt from "bcrypt";
 import authRoutes from "./src/routes/authRoutes.js";
-
+import eventRoutes from "./src/routes/eventRoutes.js";
 
 
 dotenv.config();
@@ -17,6 +17,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth",authRoutes);
+app.use("/events", eventRoutes);
 
 const PORT = process.env.PORT || 3000;
 
