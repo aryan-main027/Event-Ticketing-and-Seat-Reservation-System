@@ -67,3 +67,9 @@ CREATE TABLE bookings(
   FOREIGN KEY(tier_id) REFERENCES ticket_tiers(id) ON DELETE RESTRICT,
   FOREIGN KEY(hold_id) REFERENCES holds(id) ON DELETE RESTRICT
 );
+
+-- indexes
+CREATE INDEX idx_holds_status_expiry ON holds (status, expiry_time);
+CREATE INDEX idx_bookings_user_id ON bookings (user_id);
+CREATE INDEX idx_ticket_tiers_event_id ON ticket_tiers (event_id);
+CREATE INDEX idx_events_organizer_id ON events (organizer_id);
