@@ -20,6 +20,7 @@ export function authenticate(req, res, next) {
     next();
 
   }catch(err){
+    console.error("Error in authentication middleware:", err);
     return res.status(401).json({ error: "Your token is invalid/expired" });
   }
 }
