@@ -1,0 +1,77 @@
+import pool from "../db/pool.js";
+
+export const createHold = async (req, res) => {
+  const { tier_id, quantity } = req.body;
+  const user_id = req.user.id;
+
+  // Validate input shape before borrowing a connection
+  if (!Number.isInteger(tier_id) || tier_id <= 0) {
+    return res.status(400).json({ error: "Invalid tier_id" });
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return res.status(400).json({ error: "Quantity must be a positive integer" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Lock ONLY the tier row (FOR UPDATE OF t), but read the event's status too
+    const tierResult = await client.query(
+      `SELECT t.available_quantity, e.status AS event_status, e.start_at
+       FROM ticket_tiers t
+       JOIN events e ON e.id = t.event_id
+       WHERE t.id = $1
+       FOR UPDATE OF t`,
+      [tier_id]
+    );
+
+    if (tierResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Tier not found" });
+    }
+
+    const tier = tierResult.rows[0];
+
+    // Draft events are hidden from the public, so treat them as nonexistent
+    if (tier.event_status === "draft") {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Tier not found" });
+    }
+
+    // Cancelled or already started: the event exists but isn't bookable
+    if (tier.event_status === "cancelled" || new Date(tier.start_at) <= new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "This event is not open for booking" });
+    }
+
+    if (tier.available_quantity < quantity) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Not enough tickets available" });
+    }
+
+    await client.query(
+      "UPDATE ticket_tiers SET available_quantity = available_quantity - $1, updated_at = NOW() WHERE id = $2",
+      [quantity, tier_id]
+    );
+
+    const holdResult = await client.query(
+      "INSERT INTO holds (user_id, tier_id, quantity, expiry_time) VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes') RETURNING *",
+      [user_id, tier_id, quantity]
+    );
+
+    await client.query("COMMIT");
+    return res.status(201).json({ success: true, hold: holdResult.rows[0] });
+
+  } catch (err) {
+    console.error("createHold failed:", err);
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackErr) {
+      console.error("ROLLBACK failed:", rollbackErr);
+    }
+    return res.status(500).json({ error: "Internal server error" });
+  } finally {
+    client.release();
+  }
+};
