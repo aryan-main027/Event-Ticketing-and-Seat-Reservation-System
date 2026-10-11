@@ -10,12 +10,14 @@ export const register = async (req,res) => {
   try{
     const {name,email,password,role} = req.body;
 
+    if (!name || !email || !password || !["ORGANIZER", "ATTENDEE"].includes(role)) {
+      return res.status(400).json({ success: false, error: "name, email, password and a valid role are required" });
+    }
+
     const isExistingUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if(isExistingUser.rows.length > 0){
-      return res.status(409).json({
-        message : "User alreday exists"
-      });
+      return res.status(409).json({ success: false, error: "User already exists" });
     }
 
     // Continue with the registration process
@@ -33,10 +35,10 @@ export const register = async (req,res) => {
         }
     });
   }catch(err){
-    res.status(500).json({
-      success : false,
-      message : "Internal server error",
-      error : err.message
+    console.error("register failed:", err);  
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error"
     });
   }
   
@@ -47,13 +49,13 @@ export const login = async (req,res) => {
   try{
     const {email , password} = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "email and password are required" });
+    }
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if(result.rows.length === 0){
-      return res.status(401).json({
-        success : false,
-        message : "Credentials do not match"
-      });
+      return res.status(401).json({ success: false, error: "Credentials do not match" });
     }
 
     const user = result.rows[0];
@@ -61,10 +63,7 @@ export const login = async (req,res) => {
     const isPasswordMatch = await bcrypt.compare(password, user.password_hash);
 
     if(!isPasswordMatch){
-      return res.status(401).json({
-        success : false,
-        message : "Credentials do not match"
-      });
+      return res.status(401).json({ success: false, error: "Credentials do not match" });
     }
 
     const token = jwt.sign(
@@ -84,11 +83,11 @@ export const login = async (req,res) => {
         }
     });
 
-  } catch (error) {
-    res.status(500).json({
-      success : false,
-      message : "Internal server error",
-      error : error.message
+  } catch (err) {
+    console.error("login failed:", err); 
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error"
     });
   }
   

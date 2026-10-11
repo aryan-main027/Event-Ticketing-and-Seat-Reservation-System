@@ -75,3 +75,29 @@ export const createHold = async (req, res) => {
     client.release();
   }
 };
+
+export const getMyHolds = async (req, res) => {
+  try {
+    let limit = parseInt(req.query.limit);
+    limit = (!limit || limit <= 0) ? 10 : limit;
+    limit = (limit > 20) ? 20 : limit;
+
+    let page = parseInt(req.query.page);
+    if (!page || page <= 0) page = 1;
+
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      "SELECT *, (expiry_time > NOW()) AS in_time FROM holds WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+      [req.user.id, limit, offset]
+    );
+
+    return res.status(200).json({
+      success: true,
+      holds: result.rows
+    });
+  } catch (err) {
+    console.error("getMyHolds failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+};
