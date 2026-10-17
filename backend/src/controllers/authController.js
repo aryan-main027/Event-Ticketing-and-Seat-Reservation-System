@@ -1,4 +1,4 @@
-import express from "express";
+
 import bcrypt from "bcrypt";
 import pool from "../db/pool.js";
 import jwt from "jsonwebtoken";
@@ -34,14 +34,13 @@ export const register = async (req,res) => {
           "email": user.rows[0].email
         }
     });
-  }catch(err){
-    console.error("register failed:", err);  
-    return res.status(500).json({
-      success: false,
-      error: "Internal server error"
-    });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ success: false, error: "User already exists" });
+    }
+    console.error("register failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
-  
 }
 
 export const login = async (req,res) => {

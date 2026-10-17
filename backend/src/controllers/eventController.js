@@ -1,11 +1,22 @@
 import pool from "../db/pool.js";
 
+
+const EVENT_STATUSES = ["draft", "published", "cancelled"];
+
+
 export const createEvent = async (req,res) => {
   try{
     const {name,start_at,description,venue} = req.body;
 
     if(!name || !start_at || !venue){
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({ success: false, error: "Name, start date, and venue are required" });
+    }
+
+    if (isNaN(new Date(start_at).getTime())) {
+      return res.status(400).json({ success: false, error: "start_at must be a valid date" });
+    }
+    if (new Date(start_at) <= new Date()) {
+      return res.status(400).json({ success: false, error: "start_at must be in the future" });
     }
 
     const organizer_id = req.user.id; 
@@ -13,11 +24,12 @@ export const createEvent = async (req,res) => {
     const newEvent = await pool.query("INSERT INTO events (name, start_at, description, venue, organizer_id) VALUES ($1, $2, $3, $4, $5) RETURNING *", [name, start_at, description, venue, organizer_id]);
 
     return res.status(201).json(
-      { message: "Event created successfully", event: newEvent.rows[0] }
+      { success: true, message: "Event created successfully", event: newEvent.rows[0] }
     );
   }catch(err){
+    console.error("createEvent failed:", err);
     return res.status(500).json(
-      { error: "Internal server error" }
+      { success: false, error: "Internal server error" }
     );
   }
 }
@@ -43,7 +55,9 @@ export const getEvents = async (req,res) => {
       events : result.rows
     })
   }catch(err){
+    console.error("getEvents failed:", err);
     return res.status(500).json({
+      success: false,
       error: "Internal server error"
     })
   }
@@ -53,6 +67,13 @@ export const getEventById = async (req,res) => {
   try{
     const {id} = req.params;
 
+    if(!Number.isInteger(Number(id)) || Number(id) <= 0){
+      return res.status(400).json({
+        success: false,
+        error: "Invalid event ID"
+      });
+    }
+
     const result = await pool.query(
       "SELECT * FROM events WHERE id = $1 AND status != 'draft'",
       [id]
@@ -60,6 +81,7 @@ export const getEventById = async (req,res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({
+        success: false,
         error: "Event not found"
       });
     }
@@ -69,7 +91,9 @@ export const getEventById = async (req,res) => {
       event: result.rows[0]
     });
   }catch(err){
+    console.error("getEventById failed:", err);
     return res.status(500).json({
+      success: false,
       error: "Internal server error"
     })
   }
@@ -77,8 +101,34 @@ export const getEventById = async (req,res) => {
 
 export const updateEvent = async (req,res) => {
   try{
+
+    if(req.body.status !== undefined && !EVENT_STATUSES.includes(req.body.status)){
+      return res.status(400).json({
+        success: false,
+        error: "Invalid event status"
+      });
+    }
+
+
     const {id} = req.params;
 
+    if(!Number.isInteger(Number(id)) || Number(id) <= 0){
+      return res.status(400).json({
+        success: false,
+        error: "Invalid event ID"
+      });
+    }
+
+    if (req.body.start_at !== undefined && isNaN(new Date(req.body.start_at).getTime())) {
+      return res.status(400).json({ success: false, error: "start_at must be a valid date" });
+    }
+
+    for (const key of ["name", "venue", "start_at"]) {
+      const value = req.body[key];
+      if (value !== undefined && (value === null || value === "")) {
+        return res.status(400).json({ success: false, error: `${key} cannot be empty` });
+      }
+    }
     const eventResult = await pool.query(
       "SELECT * FROM events WHERE id = $1",
       [id]
@@ -86,6 +136,7 @@ export const updateEvent = async (req,res) => {
 
     if(eventResult.rows.length === 0){
       return res.status(404).json({
+        success: false,
         error: "Event not found"
       });
     }
@@ -94,6 +145,7 @@ export const updateEvent = async (req,res) => {
 
     if(event.organizer_id !== req.user.id){
       return res.status(403).json({
+        success: false,
         error: "You are not authorized to update this event"
       });
     }
@@ -114,6 +166,7 @@ export const updateEvent = async (req,res) => {
 
     if(fields.length === 0){
       return res.status(400).json({
+        success: false,
         error: "No valid fields provided for update"
       })
     }
@@ -131,7 +184,9 @@ export const updateEvent = async (req,res) => {
     })
 
   }catch(err){
+    console.error("updateEvent failed:", err);
     return res.status(500).json({
+      success: false,
       error: "Internal server error"
     })
   }

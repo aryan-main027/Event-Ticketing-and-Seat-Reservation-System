@@ -1,5 +1,5 @@
 import express from "express";
-import { confirmBooking } from "../controllers/bookingControllers.js";
+import { confirmBooking } from "../controllers/bookingController.js";
 import { authenticate, authorizeRole } from "../middleware/auth.js";
 
 const router = express.Router();

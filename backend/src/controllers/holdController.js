@@ -101,3 +101,29 @@ export const getMyHolds = async (req, res) => {
     return res.status(500).json({ success: false, error: "Internal server error" });
   }
 };
+
+export const getMyHoldById = async (req, res) => {
+  try{
+    const id = Number(req.params.id);
+
+    if(!Number.isInteger(id) || id <= 0){
+      return res.status(400).json({ success: false, error: "Invalid hold ID" });
+    }
+
+    const result = await pool.query(
+      "SELECT *, (expiry_time > NOW()) AS in_time FROM holds WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Hold not found" });
+    }
+
+
+    return res.status(200).json({ success: true, hold: result.rows[0] });
+
+  }catch(err){
+    console.error("getMyHoldById failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+};
