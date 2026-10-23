@@ -12,9 +12,12 @@ export const createEvent = async (req,res) => {
       return res.status(400).json({ success: false, error: "Name, start date, and venue are required" });
     }
 
+    // Validate start_at is a valid date
     if (isNaN(new Date(start_at).getTime())) {
       return res.status(400).json({ success: false, error: "start_at must be a valid date" });
     }
+
+    // Check if start_at is in the future
     if (new Date(start_at) <= new Date()) {
       return res.status(400).json({ success: false, error: "start_at must be in the future" });
     }

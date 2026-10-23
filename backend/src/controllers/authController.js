@@ -35,6 +35,7 @@ export const register = async (req,res) => {
         }
     });
   } catch (err) {
+    // PostgreSQL error code 23505 indicates a unique violation, which means the user already exists. We handle this case specifically to return a 409 Conflict status code. For other errors, we log the error and return a 500 Internal Server Error status code.
     if (err.code === "23505") {
       return res.status(409).json({ success: false, error: "User already exists" });
     }
@@ -89,5 +90,4 @@ export const login = async (req,res) => {
       error: "Internal server error"
     });
   }
-  
 }
