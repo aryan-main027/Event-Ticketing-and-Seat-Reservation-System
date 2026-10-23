@@ -6,10 +6,10 @@ export const createHold = async (req, res) => {
 
   // Validate input shape before borrowing a connection
   if (!Number.isInteger(tier_id) || tier_id <= 0) {
-    return res.status(400).json({ error: "Invalid tier_id" });
+    return res.status(400).json({ success: false, error: "Invalid tier_id" });
   }
   if (!Number.isInteger(quantity) || quantity <= 0) {
-    return res.status(400).json({ error: "Quantity must be a positive integer" });
+    return res.status(400).json({ success: false, error: "Quantity must be a positive integer" });
   }
 
   const client = await pool.connect();
@@ -28,7 +28,7 @@ export const createHold = async (req, res) => {
 
     if (tierResult.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Tier not found" });
+      return res.status(404).json({ success: false, error: "Tier not found" });
     }
 
     const tier = tierResult.rows[0];
@@ -36,18 +36,18 @@ export const createHold = async (req, res) => {
     // Draft events are hidden from the public, so treat them as nonexistent
     if (tier.event_status === "draft") {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Tier not found" });
+      return res.status(404).json({ success: false, error: "Tier not found" });
     }
 
     // Cancelled or already started: the event exists but isn't bookable
     if (tier.event_status === "cancelled" || new Date(tier.start_at) <= new Date()) {
       await client.query("ROLLBACK");
-      return res.status(409).json({ error: "This event is not open for booking" });
+      return res.status(409).json({ success: false, error: "This event is not open for booking" });
     }
 
     if (tier.available_quantity < quantity) {
       await client.query("ROLLBACK");
-      return res.status(409).json({ error: "Not enough tickets available" });
+      return res.status(409).json({ success: false, error: "Not enough tickets available" });
     }
 
     await client.query(
@@ -70,7 +70,7 @@ export const createHold = async (req, res) => {
     } catch (rollbackErr) {
       console.error("ROLLBACK failed:", rollbackErr);
     }
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ success: false, error: "Internal server error" });
   } finally {
     client.release();
   }
