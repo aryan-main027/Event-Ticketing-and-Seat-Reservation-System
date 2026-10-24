@@ -35,7 +35,7 @@ export const createHold = async (req, res) => {
       `SELECT
          t.available_quantity,
          e.status AS event_status,
-         e.start_at
+         (e.start_at <= NOW()) AS started
        FROM ticket_tiers t
        JOIN events e ON e.id = t.event_id
        WHERE t.id = $1
@@ -64,9 +64,7 @@ export const createHold = async (req, res) => {
     }
 
     if (
-      tier.event_status === "cancelled" ||
-      new Date(tier.start_at) <= new Date()
-    ) {
+      tier.event_status === "cancelled" || tier.started) {
       await client.query("ROLLBACK");
 
       return res.status(409).json({
