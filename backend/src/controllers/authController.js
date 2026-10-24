@@ -72,15 +72,17 @@ export const login = async (req,res) => {
       {expiresIn : "1h"}
     )
 
+    res.cookie("token", token, {
+      httpOnly: true,                                  // JavaScript cannot read it (XSS defence)
+      sameSite: "lax",                                 // not sent on cross-site POSTs (CSRF defence)
+      secure: process.env.NODE_ENV === "production",   // HTTPS only in production
+      maxAge: 60 * 60 * 1000                           // 1 hour, matches the JWT expiry
+    });
+
     return res.status(200).json({
-      success : true,
-      message : "Login successful",
-      token : token,
-      "user": {
-          "id": user.id,
-          "name": user.name,
-          "email": user.email
-        }
+      success: true,
+      message: "Login successful",
+      user: { id: user.id, name: user.name, email: user.email, role: user.role }
     });
 
   } catch (err) {
@@ -91,3 +93,13 @@ export const login = async (req,res) => {
     });
   }
 }
+
+export const logout = (req, res) => {
+  // options must match the ones used in res.cookie, or the browser keeps the cookie
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
+  return res.status(200).json({ success: true, message: "Logged out" });
+};

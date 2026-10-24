@@ -1,22 +1,16 @@
 import jwt from "jsonwebtoken";
 
+// UPDATED: reads the token from the httpOnly cookie, not the Authorization header
 export function authenticate(req, res, next) {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ success: false, error: "Not authenticated" });
+  }
   try {
-    const authHeader = req.headers.authorization || "";
-    const [scheme, token] = authHeader.split(" ");
-
-    if (scheme !== "Bearer" || !token) {
-      return res.status(401).json({
-        success: false,
-        error: "Authorization header must be: Bearer <token>"
-      });
-    }
-
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
   } catch (err) {
-    // expired or invalid tokens are normal events, so no stack trace
-    return res.status(401).json({ success: false, error: "Your token is invalid/expired" });
+    return res.status(401).json({ success: false, error: "Your session is invalid or expired" });
   }
 }
 

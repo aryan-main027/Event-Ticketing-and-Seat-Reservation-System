@@ -11,13 +11,23 @@ afterAll(async () => {
   await pool.end();
 });
 
-async function createHold(token, tierId, quantity) {
+// the parameter is now the cookie, and it is actually used
+async function createHold(cookie, tierId, quantity) {
   const res = await request(app)
     .post("/holds")
-    .set("Authorization", `Bearer ${token}`)
+    .set("Cookie", cookie)
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ tier_id: tierId, quantity });
   expect(res.status).toBe(201);
   return res.body.hold;
+}
+
+async function confirmHold(cookie, holdId) {
+  return request(app)
+    .post("/bookings")
+    .set("Cookie", cookie)
+    .set("X-Requested-With", "XMLHttpRequest")
+    .send({ hold_id: holdId });
 }
 
 async function makeExpired(holdId) {
@@ -27,14 +37,19 @@ async function makeExpired(holdId) {
   );
 }
 
-test("expired hold is released and tickets return to the tier", async () => {
+async function setup(total) {
   await resetDb();
   const organizer = await registerAndLogin("ORGANIZER");
   const attendee = await registerAndLogin("ATTENDEE");
-  const event = await createPublishedEvent(organizer.token);
-  const tier = await createTier(organizer.token, event.id, 10);
+  const event = await createPublishedEvent(organizer.cookie);
+  const tier = await createTier(organizer.cookie, event.id, total);
+  return { attendee, tier };
+}
 
-  const hold = await createHold(attendee.token, tier.id, 3);
+test("expired hold is released and tickets return to the tier", async () => {
+  const { attendee, tier } = await setup(10);
+
+  const hold = await createHold(attendee.cookie, tier.id, 3);
   await makeExpired(hold.id);
 
   await expireHolds();
@@ -47,18 +62,10 @@ test("expired hold is released and tickets return to the tier", async () => {
 });
 
 test("converted hold is NOT released by the cron job", async () => {
-  await resetDb();
-  const organizer = await registerAndLogin("ORGANIZER");
-  const attendee = await registerAndLogin("ATTENDEE");
-  const event = await createPublishedEvent(organizer.token);
-  const tier = await createTier(organizer.token, event.id, 10);
+  const { attendee, tier } = await setup(10);
 
-  const hold = await createHold(attendee.token, tier.id, 3);
-
-  const confirm = await request(app)
-    .post("/bookings")
-    .set("Authorization", `Bearer ${attendee.token}`)
-    .send({ hold_id: hold.id });
+  const hold = await createHold(attendee.cookie, tier.id, 3);
+  const confirm = await confirmHold(attendee.cookie, hold.id);
   expect(confirm.status).toBe(201);
 
   await makeExpired(hold.id);   // time passes after the booking
@@ -72,18 +79,11 @@ test("converted hold is NOT released by the cron job", async () => {
 });
 
 test("confirming an expired hold is rejected even before cron runs", async () => {
-  await resetDb();
-  const organizer = await registerAndLogin("ORGANIZER");
-  const attendee = await registerAndLogin("ATTENDEE");
-  const event = await createPublishedEvent(organizer.token);
-  const tier = await createTier(organizer.token, event.id, 10);
+  const { attendee, tier } = await setup(10);
 
-  const hold = await createHold(attendee.token, tier.id, 2);
+  const hold = await createHold(attendee.cookie, tier.id, 2);
   await makeExpired(hold.id);   // status is still 'active', time has run out
 
-  const confirm = await request(app)
-    .post("/bookings")
-    .set("Authorization", `Bearer ${attendee.token}`)
-    .send({ hold_id: hold.id });
+  const confirm = await confirmHold(attendee.cookie, hold.id);
   expect(confirm.status).toBe(409);
 });

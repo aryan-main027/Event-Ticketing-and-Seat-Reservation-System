@@ -15,33 +15,32 @@ test("available + active holds + booked always equals total", async () => {
 
   const organizer = await registerAndLogin("ORGANIZER");
   const attendee = await registerAndLogin("ATTENDEE");
-  const event = await createPublishedEvent(organizer.token);
-  const tier = await createTier(organizer.token, event.id, 10);
+  // UPDATED: .token became .cookie
+  const event = await createPublishedEvent(organizer.cookie);
+  const tier = await createTier(organizer.cookie, event.id, 10);
 
-  // 1. Fire 15 simultaneous holds, alternating quantity 1 and 2
   const holdResults = await Promise.all(
     Array.from({ length: 15 }, (_, i) =>
       request(app)
         .post("/holds")
-        .set("Authorization", `Bearer ${attendee.token}`)
+        .set("Cookie", attendee.cookie)
+        .set("X-Requested-With", "XMLHttpRequest")
         .send({ tier_id: tier.id, quantity: (i % 2) + 1 })
     )
   );
 
-  // keep only the holds that were actually created
   const created = holdResults.filter((r) => r.status === 201);
   expect(created.length).toBeGreaterThan(0);
 
-  // 2. Confirm the first 2 successful holds into bookings
   for (const res of created.slice(0, 2)) {
     const confirmRes = await request(app)
       .post("/bookings")
-      .set("Authorization", `Bearer ${attendee.token}`)
+      .set("Cookie", attendee.cookie)
+      .set("X-Requested-With", "XMLHttpRequest")
       .send({ hold_id: res.body.hold.id });
     expect(confirmRes.status).toBe(201);
   }
 
-  // 3. Check the invariant in the database
   const { rows } = await pool.query(
     `SELECT t.total_quantity,
             t.available_quantity

@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import request from "supertest";
 import app from "../app.js";
 import pool from "../src/db/pool.js";
@@ -23,7 +22,7 @@ export async function resetDb() {
   );
 }
 
-// Registers a user through the real API, logs in, returns { token, id }
+// Registers a user through the real API, logs in, returns { cookie, id }
 export async function registerAndLogin(role) {
   // unique email each time, since emails must be unique
   const email = `${role.toLowerCase()}-${Date.now()}-${Math.random()}@test.com`;
@@ -31,24 +30,31 @@ export async function registerAndLogin(role) {
 
   const registerRes = await request(app)
     .post("/auth/register")
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ name: `Test ${role}`, email, password, role });
   expectStatus(registerRes, 201, "register");
 
   const loginRes = await request(app)
     .post("/auth/login")
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ email, password });
   expectStatus(loginRes, 200, "login");
 
-  return { token: loginRes.body.token, id: loginRes.body.user.id };
+  // The token arrives as a cookie, e.g. "token=eyJ...; Path=/; HttpOnly".
+  // Keep only the "token=eyJ..." part.
+  const cookie = loginRes.headers["set-cookie"][0].split(";")[0];
+
+  return { cookie, id: loginRes.body.user.id };
 }
 
 // Creates an event 7 days from now, publishes it, returns the event
-export async function createPublishedEvent(token) {
+export async function createPublishedEvent(cookie) {
   const start_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const createRes = await request(app)
     .post("/events")
-    .set("Authorization", `Bearer ${token}`)
+    .set("Cookie", cookie)
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ name: "Test Event", venue: "Test Venue", start_at });
   expectStatus(createRes, 201, "create event");
 
@@ -56,7 +62,8 @@ export async function createPublishedEvent(token) {
 
   const publishRes = await request(app)
     .patch(`/events/${eventId}`)
-    .set("Authorization", `Bearer ${token}`)
+    .set("Cookie", cookie)
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ status: "published" });
   expectStatus(publishRes, 200, "publish event");
 
@@ -64,10 +71,11 @@ export async function createPublishedEvent(token) {
 }
 
 // Creates a tier with the given total quantity, returns the tier
-export async function createTier(token, eventId, total_quantity) {
+export async function createTier(cookie, eventId, total_quantity) {
   const res = await request(app)
     .post(`/events/${eventId}/ticket_tiers`)
-    .set("Authorization", `Bearer ${token}`)
+    .set("Cookie", cookie)
+    .set("X-Requested-With", "XMLHttpRequest")
     .send({ name: "General", price: 50, total_quantity });
   expectStatus(res, 201, "create tier");
 
