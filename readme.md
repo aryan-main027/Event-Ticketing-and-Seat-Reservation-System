@@ -270,7 +270,7 @@ Protected endpoints require:
 | POST | `/bookings` | Attendee | Confirm a hold and create a booking |
 | GET | `/bookings` | Attendee | List the attendee's bookings |
 | GET | `/bookings/:id` | Attendee (owner) | View a specific booking |
-| GET | `/organizer/stats` | Organizer | View booking statistics for owned events |
+| GET | `/events/:eventId/stats` | Organizer | View booking statistics for owned events |
 | GET | `/health` | Public | Check application health |
 
 **Note:** Verify the exact organizer statistics path and all route paths against your current route files before publishing this table.
