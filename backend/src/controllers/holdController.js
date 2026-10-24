@@ -11,9 +11,9 @@ export const createHold = async (req, res) => {
   if (!Number.isInteger(quantity) || quantity <= 0) {
     return res.status(400).json({ success: false, error: "Quantity must be a positive integer" });
   }
-
-  const client = await pool.connect();
+  
   try {
+    const client = await pool.connect();
     await client.query("BEGIN");
 
     // Lock ONLY the tier row (FOR UPDATE OF t), but read the event's status too
@@ -28,7 +28,10 @@ export const createHold = async (req, res) => {
 
     if (tierResult.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, error: "Tier not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Tier not found"
+      });
     }
 
     const tier = tierResult.rows[0];

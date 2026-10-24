@@ -73,3 +73,5 @@ CREATE INDEX idx_holds_status_expiry ON holds (status, expiry_time);
 CREATE INDEX idx_bookings_user_id ON bookings (user_id);
 CREATE INDEX idx_ticket_tiers_event_id ON ticket_tiers (event_id);
 CREATE INDEX idx_events_organizer_id ON events (organizer_id);
+
+ALTER TABLE bookings ADD CONSTRAINT bookings_hold_id_key UNIQUE (hold_id);
