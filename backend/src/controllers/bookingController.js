@@ -88,3 +88,60 @@ export const confirmBooking = async (req, res) => {
     client.release();
   }
 };
+
+export const getMyBookings = async (req, res) => {
+  try {
+    let limit = parseInt(req.query.limit);
+    limit = (!limit || limit <= 0) ? 10 : limit;
+    limit = (limit > 20) ? 20 : limit;
+
+    let page = parseInt(req.query.page);
+    if (!page || page <= 0) page = 1;
+
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      `SELECT b.*, t.name AS tier_name, t.price,
+              e.name AS event_name, e.start_at AS event_start_at, e.venue AS event_venue
+       FROM bookings b
+       JOIN ticket_tiers t ON b.tier_id = t.id
+       JOIN events e ON t.event_id = e.id
+       WHERE b.user_id = $1
+       ORDER BY b.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.id, limit, offset]
+    );
+
+    return res.status(200).json({ success: true, bookings: result.rows });
+  } catch (err) {
+    console.error("getMyBookings failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+};
+
+export const getMyBookingById = async (req,res) => {
+  try{
+    const userid = req.user.id;
+
+    const bookingId = Number(req.params.id);
+    if (!Number.isInteger(bookingId) || bookingId <= 0) {
+      return res.status(400).json({ success: false, error: "Invalid booking id" });
+    }
+
+    const result = await pool.query(
+      "Select b.*, t.name AS tier_name, t.price AS tier_price, e.name AS event_name, e.start_at AS event_start_at, e.venue AS event_venue FROM bookings b JOIN ticket_tiers t ON b.tier_id = t.id JOIN events e ON t.event_id = e.id WHERE b.user_id = $1 AND b.id = $2", 
+      [userid, bookingId]
+    )
+
+
+    if(result.rows.length === 0){
+      return res.status(404).json({ success: false, error: "Booking not found" });
+    }
+
+    return res.status(200).json({ success: true, booking: result.rows[0] });
+  }
+  catch(err){
+    console.error("getMyBookingById failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+}
