@@ -194,3 +194,61 @@ export const updateEvent = async (req,res) => {
     })
   }
 }
+
+export const getEventStats = async (req,res) => {
+  try{
+    const {eventId} = req.params;
+
+    if(!Number.isInteger(Number(eventId)) || Number(eventId) <= 0){
+      return res.status(400).json({
+        success: false,
+        error: "Invalid event ID"
+      });
+    }
+
+    const eventResult = await pool.query(
+      "SELECT * FROM events WHERE id = $1",
+      [eventId]
+    );
+
+    if(eventResult.rows.length === 0){
+      return res.status(404).json({
+        success: false,
+        error: "Event not found"
+      });
+    }
+
+    const event = eventResult.rows[0];
+
+    if(event.organizer_id !== req.user.id){
+      return res.status(403).json({
+        success: false,
+        error: "You are not authorized to view stats for this event"
+      }); 
+    }
+
+    const statsResult = await pool.query(
+      `SELECT t.id, t.name, t.total_quantity, t.available_quantity,
+              COALESCE((SELECT SUM(quantity) FROM bookings WHERE tier_id = t.id), 0)::int AS sold,
+              COALESCE((SELECT SUM(quantity) FROM holds
+                        WHERE tier_id = t.id AND status = 'active' AND expiry_time > NOW()), 0)::int AS held
+      FROM ticket_tiers t
+      WHERE t.event_id = $1
+      ORDER BY t.id`,
+      [eventId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      event: { id: event.id, name: event.name },
+      tiers: statsResult.rows
+    });
+
+  } catch (error) {
+    console.error("getEventStats failed:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error"
+    });
+  }
+}

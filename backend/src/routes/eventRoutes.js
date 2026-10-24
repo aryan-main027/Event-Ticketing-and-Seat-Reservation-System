@@ -1,5 +1,5 @@
 import express from "express";
-import { createEvent , getEvents , getEventById , updateEvent } from "../controllers/eventController.js";
+import { createEvent , getEvents , getEventById , updateEvent , getEventStats} from "../controllers/eventController.js";
 import { authenticate, authorizeRole } from "../middleware/auth.js";
 import tierRoutes from "./tiersRoutes.js";
 
@@ -14,5 +14,7 @@ router.get("/",getEvents);
 router.patch("/:id",authenticate, authorizeRole("ORGANIZER"),updateEvent);
 
 router.use("/:eventId/ticket_tiers", tierRoutes);
+
+router.get("/:eventId/stats", authenticate, authorizeRole("ORGANIZER"), getEventStats);
 
 export default router;
