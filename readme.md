@@ -226,3 +226,240 @@ zero and negatives fall back to the defaults.
 
 The cap on `limit` is the real protection. Without it, a client could ask for
 `limit=1000000` and force the database to return an entire table in one response.
+
+## Security
+
+The backend includes the following security measures:
+
+- **Password hashing:** Passwords are hashed using bcrypt instead of being stored as plain text.
+- **Authentication:** Protected routes require a valid JWT sent through the `Authorization: Bearer <token>` header.
+- **Role-based access control:** Middleware restricts organizer and attendee operations according to their roles.
+- **Resource ownership:** Attendees can access only their own holds and bookings. Organizers can modify only their own events.
+- **Input validation:** Resource IDs and quantities are validated before database operations.
+- **SQL injection protection:** Database queries use parameterized SQL rather than directly interpolating user input.
+- **Concurrency safety:** Ticket holds use PostgreSQL transactions and row-level locking to prevent overselling.
+- **Rate limiting:** Limits excessive requests to the API.
+- **Security headers and CORS:** Helmet and CORS middleware provide additional HTTP security controls.
+- **Environment variables:** Database connection strings, JWT secrets, and other configuration values are kept outside the source code.
+
+### Security limitations
+
+- JWTs are currently returned in the response body. HttpOnly cookies and appropriate CSRF protection are planned for future authentication hardening.
+- Rate-limit counters are stored in server memory, so they are not shared across multiple server instances.
+- Integer resource IDs are predictable. Authorization and ownership checks are still required and are enforced independently of ID predictability.
+
+## API Reference
+
+Protected endpoints require:
+
+`Authorization: Bearer <token>`
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| POST | `/auth/register` | Public | Register a user |
+| POST | `/auth/login` | Public | Authenticate a user |
+| POST | `/events` | Organizer | Create an event |
+| GET | `/events` | Public | Browse published events |
+| GET | `/events/:id` | Public | View an event |
+| PATCH | `/events/:id` | Organizer (owner) | Update an owned event |
+| POST | `/events/:eventId/ticket_tiers` | Organizer (owner) | Create a ticket tier |
+| GET | `/events/:eventId/ticket_tiers` | Public | List an event's ticket tiers |
+| POST | `/holds` | Attendee | Place a temporary ticket hold |
+| GET | `/holds` | Attendee | List the attendee's holds |
+| GET | `/holds/:id` | Attendee (owner) | View a specific hold |
+| POST | `/bookings` | Attendee | Confirm a hold and create a booking |
+| GET | `/bookings` | Attendee | List the attendee's bookings |
+| GET | `/bookings/:id` | Attendee (owner) | View a specific booking |
+| GET | `/organizer/stats` | Organizer | View booking statistics for owned events |
+| GET | `/health` | Public | Check application health |
+
+**Note:** Verify the exact organizer statistics path and all route paths against your current route files before publishing this table.
+
+### Status codes
+
+| Code | Meaning |
+|---|---|
+| `200 OK` | Request completed successfully |
+| `201 Created` | A resource was created |
+| `400 Bad Request` | Invalid input |
+| `401 Unauthorized` | Missing, invalid, or expired authentication token |
+| `403 Forbidden` | Authenticated user lacks the required role or permission |
+| `404 Not Found` | Resource does not exist or is hidden by an ownership/access rule |
+| `409 Conflict` | Booking conflict, unavailable inventory, expired or already-used hold, or another state conflict |
+| `429 Too Many Requests` | Rate limit exceeded |
+| `500 Internal Server Error` | Unexpected server error |
+
+## Project Structure
+
+```text
+backend/
+├── app.js                  # Express app and middleware
+├── server.js               # Starts the server and schedules expiry job
+├── src/
+│   ├── controllers/        # Request handling and business logic
+│   ├── routes/             # API route definitions
+│   ├── middleware/         # Authentication and authorization
+│   ├── jobs/               # Hold expiry job
+│   └── db/
+│       ├── pool.js         # PostgreSQL connection pool
+│       └── schema.sql      # Database schema
+├── tests/                  # Jest and Supertest tests
+├── .env.example            # Example environment configuration
+├── package.json
+└── README.md
+```
+
+The application follows a modular monolith architecture: one Express application with separate modules for routes, controllers, middleware, database access, and background jobs. This keeps the system understandable without introducing unnecessary distributed-system complexity.
+
+*Adjust the tree to match your actual repository.*
+
+## Running Locally
+
+### Requirements
+
+- Node.js 20 or later
+- PostgreSQL 15 or later
+- npm
+
+### 1. Install dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 2. Create the databases and database user
+
+Connect to PostgreSQL using an administrative account and run:
+
+```sql
+CREATE DATABASE ticketing_db;
+CREATE DATABASE ticketing_test;
+
+CREATE USER ticketing_user WITH PASSWORD 'your_password';
+
+GRANT ALL PRIVILEGES ON DATABASE ticketing_db
+TO ticketing_user;
+
+GRANT ALL PRIVILEGES ON DATABASE ticketing_test
+TO ticketing_user;
+```
+
+Connect to each database and grant the required schema permissions:
+
+```sql
+GRANT ALL ON SCHEMA public TO ticketing_user;
+```
+
+Run that grant separately while connected to `ticketing_db` and `ticketing_test`. Ensure the user also has the required table and sequence permissions for your schema setup.
+
+### 3. Initialize the schema
+
+Run these commands from the `backend` directory:
+
+```bash
+psql -U ticketing_user -d ticketing_db \
+  -h localhost -f src/db/schema.sql
+
+psql -U ticketing_user -d ticketing_test \
+  -h localhost -f src/db/schema.sql
+```
+
+The test database is separate so automated tests can reset their data without affecting development data.
+
+### 4. Configure environment variables
+
+Create a `.env` file in the `backend` directory using `.env.example` as a reference.
+
+```dotenv
+PORT=3000
+DATABASE_URL=postgresql://ticketing_user:PASSWORD@localhost:5432/ticketing_db
+DATABASE_URL_TEST=postgresql://ticketing_user:PASSWORD@localhost:5432/ticketing_test
+JWT_SECRET=replace_with_a_long_random_secret
+FRONTEND_URL=http://localhost:5173
+```
+
+Replace the example password and secret with your own values. URL-encode special characters in the database password when necessary.
+
+Do not commit `.env` or real credentials to GitHub.
+
+### 5. Start the server
+
+```bash
+node server.js
+```
+
+Use the start command defined in your `package.json` instead if it differs.
+
+## Running Tests
+
+Run the automated test suite from the `backend` directory:
+
+```bash
+npm test
+```
+
+The tests use the separate `ticketing_test` database. Make sure it exists and has the schema loaded before running them.
+
+| Test | What it verifies |
+|---|---|
+| `concurrency.test.js` | Twenty simultaneous hold requests against five tickets produce exactly five successful holds and fifteen conflicts, without overselling. |
+| `invariant.test.js` | Inventory remains consistent after concurrent holds and booking confirmations. |
+| `expiry.test.js` | Expired holds return inventory, converted holds are not expired again, and an expired hold cannot be confirmed. |
+| `smoke.test.js` | The Express application starts correctly and the health endpoint responds. |
+
+These tests focus on correctness and important edge cases, rather than simply increasing the test count.
+
+## Known Limitations
+
+- **Mock payments:** Booking confirmation does not process a real payment.
+- **Quantity-based tickets:** Individual seat maps and seat selection are not implemented.
+- **No refunds or attendee cancellations:** These workflows are outside the current MVP.
+- **No frontend:** The React application has not yet been implemented.
+- **Authentication hardening:** HttpOnly cookies and refresh-token handling remain future work.
+- **Rate limiting:** Counters are in memory and are not shared across instances.
+- **Event lifecycle:** Restrictions on transitioning a cancelled event back to published need further hardening.
+- **Draft visibility:** Draft events are currently hidden on public routes, including from their organizer on those routes.
+- **Predictable IDs:** Integer IDs can be guessed, so every protected resource must continue enforcing authorization and ownership checks.
+- **Single-instance design:** The backend has not yet been adapted or load-tested for horizontal scaling.
+
+## Roadmap
+
+### Frontend
+
+- Build the React interface for browsing events, viewing ticket availability, placing holds, and confirming bookings.
+- Display hold expiry and booking status clearly.
+
+### Authentication and security
+
+- Introduce refresh tokens and HttpOnly cookies with appropriate CSRF protection.
+- Review all event lifecycle transitions and resource-level authorization.
+- Add further integration tests for unauthorized access and invalid state transitions.
+
+### DevOps
+
+- Learn Docker and containerize the API.
+- Use Docker Compose for local application and database setup.
+- Add CI/CD to run tests automatically and support deployment.
+- Improve environment configuration and secrets management.
+
+### Observability
+
+- Introduce structured logging with Pino.
+- Add error tracking with Sentry after deployment.
+- Add health checks, metrics, and dashboards as the project evolves.
+
+### System design and scalability
+
+- Load-test concurrent booking requests.
+- Measure database and connection-pool bottlenecks.
+- Evaluate Redis for shared rate limiting and caching frequently requested event data.
+- Study horizontal scaling and asynchronous processing when a real requirement justifies them.
+
+### Product features
+
+- Integrate a real payment gateway.
+- Add seat-level maps and selection.
+- Add cancellation, refund, notification, and check-in workflows.
+
+The current goal is to keep the V1 backend correct, understandable, and well-tested before adding these enhancements.
