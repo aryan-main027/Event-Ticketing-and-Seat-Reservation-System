@@ -1,4 +1,4 @@
-import cron from "node-cron";
+// import cron from "node-cron";
 import pool from "../db/pool.js";
 
 export const expireHolds = async () => {
@@ -61,5 +61,5 @@ export const expireHolds = async () => {
   }
 };
 
-// every 30 seconds
-cron.schedule("*/30 * * * * *", expireHolds);
+// // every 30 seconds
+// cron.schedule("*/30 * * * * *", expireHolds);
