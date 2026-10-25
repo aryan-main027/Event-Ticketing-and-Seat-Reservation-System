@@ -5,6 +5,7 @@ import { useAuthStore } from "./store/authStore";
 import Login from "./pages/Login";
 // UPDATED: import Register so its route can be added
 import Register from "./pages/Register";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,22 @@ function App() {
       <Route path="/login" element={<Login />} />
       {/* UPDATED: the missing /register route. Without it the Create account link shows a blank page */}
       <Route path="/register" element={<Register />} />
+      <Route
+        path="/attendee-test"
+        element={
+          <ProtectedRoute requiredRole="ATTENDEE">
+            <p className="p-6">Attendee only</p>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizer-test"
+        element={
+          <ProtectedRoute requiredRole="ORGANIZER">
+            <p>Organizer only</p>
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
