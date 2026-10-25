@@ -103,3 +103,23 @@ export const logout = (req, res) => {
   });
   return res.status(200).json({ success: true, message: "Logged out" });
 };
+
+export const me = async (req,res) => {
+  try{
+    const {id} = req.user;
+
+    const result = await pool.query(
+      "SELECT id, name, email, role FROM users WHERE id = $1",
+      [id]  
+    )
+
+    if(result.rows.length === 0){
+      return res.status(401).json({ success: false, error: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, user: result.rows[0] });
+  }catch(err){
+    console.error("me failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+}

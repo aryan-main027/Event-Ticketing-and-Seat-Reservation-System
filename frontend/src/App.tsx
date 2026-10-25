@@ -1,32 +1,30 @@
-import { useState , useEffect } from 'react'
-import client from '/home/aryan/Desktop/Event-Ticketing-and-Seat-Reservation-System/frontend/src/api/client.ts'
-
+import { useEffect, useState } from "react";
+import * as authApi from "./api/auth";
+import { useAuthStore } from "./store/authStore";
 
 function App() {
-  const [status,setStatus] = useState<string>("checking....");
-  const [error,setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const login = useAuthStore((s) => s.login);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    client
-      .get("/health")
-      .then((res) => setStatus(res.data.status))
-      .catch((err) => {
-        setStatus("failed");
-        setError(err.message);
-      });
-  }, []);
+    authApi
+      .fetchMe()
+      .then((u) => {
+        console.log("restored user:", u); // temporary, delete later
+        login(u);
+      })
+      .catch(() => {}) // 401: not logged in, stay silent
+      .finally(() => setLoading(false));
+  }, [login]);
+
+  if (loading) return <p>Loading...</p>;
 
   return (
-    <>
-      <div className="min-h-screen flex flex-col items-center justify-center gap-2">
-        <h1 className="text-2xl font-bold">Event Ticketing</h1>
-        <p>
-          API health: <span className="font-mono">{status}</span>
-        </p>
-        {error && <p className="text-red-600">{error}</p>}
-      </div>
-    </>
-  )
+    <div className="p-6">
+      <p>Logged in as: {user ? `${user.name} (${user.role})` : "nobody"}</p>
+    </div>
+  );
 }
 
-export default App
+export default App;
