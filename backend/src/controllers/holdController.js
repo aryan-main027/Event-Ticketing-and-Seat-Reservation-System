@@ -143,12 +143,14 @@ export const getMyHolds = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const result = await pool.query(
-      `SELECT *,
-              (expiry_time > NOW()) AS in_time
-       FROM holds
-       WHERE user_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
+      `SELECT h.*, (h.expiry_time > NOW()) AS in_time,
+              t.name AS tier_name, e.name AS event_name
+      FROM holds h
+      JOIN ticket_tiers t ON t.id = h.tier_id
+      JOIN events e ON e.id = t.event_id
+      WHERE h.user_id = $1
+      ORDER BY h.created_at DESC
+      LIMIT $2 OFFSET $3`,
       [req.user.id, limit, offset]
     );
 
