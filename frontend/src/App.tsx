@@ -1,29 +1,44 @@
 import { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import * as authApi from "./api/auth";
 import { useAuthStore } from "./store/authStore";
+import Login from "./pages/Login";
 
 function App() {
   const [loading, setLoading] = useState(true);
   const login = useAuthStore((s) => s.login);
-  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     authApi
       .fetchMe()
-      .then((u) => {
-        console.log("restored user:", u); // temporary, delete later
-        login(u);
-      })
-      .catch(() => {}) // 401: not logged in, stay silent
+      .then((u) => login(u))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [login]);
 
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="p-6">
-      <p>Logged in as: {user ? `${user.name} (${user.role})` : "nobody"}</p>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <div className="p-6">
+            <p>Home (events list comes next)</p>
+            <button
+              className="mt-3 rounded bg-slate-800 px-3 py-1 text-white"
+              onClick={async () => {
+                await authApi.logout();
+                useAuthStore.getState().logout();
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        }
+      />
+      <Route path="/login" element={<Login />} />
+    </Routes>
   );
 }
 
