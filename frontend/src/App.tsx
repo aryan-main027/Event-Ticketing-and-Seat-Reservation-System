@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 // UPDATED: import Register so its route can be added
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
+import EventList from "./pages/EventList";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/events" element={<EventList />} />
     </Routes>
   );
 }
