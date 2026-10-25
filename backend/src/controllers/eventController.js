@@ -255,3 +255,17 @@ export const getEventStats = async (req,res) => {
     });
   }
 }
+
+// Lists the logged-in organizer's own events, including drafts and past events
+export const getMyEvents = async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM events WHERE organizer_id = $1 ORDER BY start_at DESC",
+      [req.user.id]
+    );
+    return res.status(200).json({ success: true, events: result.rows });
+  } catch (err) {
+    console.error("getMyEvents failed:", err);
+    return res.status(500).json({ success: false, error: "Internal server error" });
+  }
+};

@@ -2,15 +2,16 @@ import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import * as authApi from "./api/auth";
 import { useAuthStore } from "./store/authStore";
+import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EventList from "./pages/EventList";
 import EventDetail from "./pages/EventDetail";
 import HoldPage from "./pages/HoldPage";
-import ProtectedRoute from "./components/ProtectedRoute";
-import MyBookings from "./pages/MyBookings";
 import MyHolds from "./pages/MyHolds";
-
+import MyBookings from "./pages/MyBookings";
+import OrganizerDashboard from "./pages/OrganizerDashboard";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -28,44 +29,45 @@ function App() {
 
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          <>
-            {/* temporary logout button, replaced by a navbar later */}
-            <div className="flex justify-end p-4">
-              <button
-                className="rounded bg-slate-800 px-3 py-1 text-white"
-                onClick={async () => {
-                  await authApi.logout();
-                  useAuthStore.getState().logout();
-                }}
-              >
-                Log out
-              </button>
-            </div>
-            <EventList />
-          </>
-        }
-      />
-      <Route path="/events/:id" element={<EventDetail />} />
+      {/* Login and Register keep their own full-screen design, so no navbar */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      {/* placeholder until the hold/countdown page is built */}
-      <Route path="/holds/:id" element={<HoldPage />} />
+
+      {/* Everything inside this route gets the navbar */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<EventList />} />
+        <Route path="/events/:id" element={<EventDetail />} />
+
+        <Route
+          path="/holds"
+          element={
+            <ProtectedRoute requiredRole="ATTENDEE">
+              <MyHolds />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/holds/:id"
+          element={
+            <ProtectedRoute requiredRole="ATTENDEE">
+              <HoldPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings"
+          element={
+            <ProtectedRoute requiredRole="ATTENDEE">
+              <MyBookings />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
       <Route
-        path="/bookings"
+        path="/organizer"
         element={
-          <ProtectedRoute requiredRole="ATTENDEE">
-            <MyBookings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/holds"
-        element={
-          <ProtectedRoute requiredRole="ATTENDEE">
-            <MyHolds />
+          <ProtectedRoute requiredRole="ORGANIZER">
+            <OrganizerDashboard />
           </ProtectedRoute>
         }
       />

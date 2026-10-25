@@ -1,5 +1,5 @@
 import express from "express";
-import { createEvent , getEvents , getEventById , updateEvent , getEventStats} from "../controllers/eventController.js";
+import { createEvent , getEvents , getEventById , updateEvent , getEventStats , getMyEvents} from "../controllers/eventController.js";
 import { authenticate, authorizeRole } from "../middleware/auth.js";
 import tierRoutes from "./tiersRoutes.js";
 
@@ -7,9 +7,11 @@ const router = express.Router();
 
 router.post("/", authenticate, authorizeRole("ORGANIZER"), createEvent);
 
-router.get("/:id", getEventById);
+router.get("/mine", authenticate, authorizeRole("ORGANIZER"), getMyEvents); 
 
-router.get("/",getEvents);
+router.get("/", getEvents);
+
+router.get("/:id", getEventById);
 
 router.patch("/:id",authenticate, authorizeRole("ORGANIZER"),updateEvent);
 
