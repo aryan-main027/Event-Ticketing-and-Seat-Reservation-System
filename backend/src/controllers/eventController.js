@@ -37,34 +37,37 @@ export const createEvent = async (req,res) => {
   }
 }
 
-export const getEvents = async (req,res) => {
-  try{
+export const getEvents = async (req, res) => {
+  try {
     let limit = parseInt(req.query.limit);
     limit = (!limit || limit <= 0) ? 10 : limit;
     limit = (limit > 20) ? 20 : limit;
 
     let page = parseInt(req.query.page);
-    if(!page || page <= 0) page = 1;
+    if (!page || page <= 0) page = 1;
 
     const offset = (page - 1) * limit;
 
+    // UPDATED: ask for limit + 1 rows. The extra row is never shown;
+    // it only tells us whether another page exists.
     const result = await pool.query(
       "SELECT * FROM events WHERE status != 'draft' AND start_at > NOW() ORDER BY start_at ASC LIMIT $1 OFFSET $2",
-      [limit, offset] 
-    )
+      [limit + 1, offset]
+    );
 
-    return res.status(200).json({
-      success: true,
-      events : result.rows
-    })
-  }catch(err){
+    // UPDATED: more than `limit` rows came back, so there is a next page
+    const hasMore = result.rows.length > limit;
+
+    // UPDATED: trim the extra row before sending
+    const events = result.rows.slice(0, limit);
+
+    // UPDATED: return page, limit and hasMore so the frontend can build the Next button
+    return res.status(200).json({ success: true, events, page, limit, hasMore });
+  } catch (err) {
     console.error("getEvents failed:", err);
-    return res.status(500).json({
-      success: false,
-      error: "Internal server error"
-    })
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
-}
+};
 
 export const getEventById = async (req,res) => {
   try{
