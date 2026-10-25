@@ -26,3 +26,8 @@ export const fetchHold = async (id: number): Promise<HoldDetail> => {
   const response = await client.get<{ success: boolean; hold: HoldDetail }>(`/holds/${id}`);
   return response.data.hold;
 };
+
+export const fetchHolds = async (): Promise<HoldDetail[]> => {
+  const response = await client.get<{ success: boolean; holds: HoldDetail[] }>("/holds");
+  return response.data.holds;
+};

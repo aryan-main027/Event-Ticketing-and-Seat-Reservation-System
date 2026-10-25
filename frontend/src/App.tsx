@@ -7,6 +7,10 @@ import Register from "./pages/Register";
 import EventList from "./pages/EventList";
 import EventDetail from "./pages/EventDetail";
 import HoldPage from "./pages/HoldPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import MyBookings from "./pages/MyBookings";
+import MyHolds from "./pages/MyHolds";
+
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -48,8 +52,23 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       {/* placeholder until the hold/countdown page is built */}
-     <Route path="/holds/:id" element={<HoldPage />} />
-      <Route path="/bookings" element={<p className="p-6">My bookings coming next</p>} />
+      <Route path="/holds/:id" element={<HoldPage />} />
+      <Route
+        path="/bookings"
+        element={
+          <ProtectedRoute requiredRole="ATTENDEE">
+            <MyBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/holds"
+        element={
+          <ProtectedRoute requiredRole="ATTENDEE">
+            <MyHolds />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

@@ -15,3 +15,16 @@ export const confirmBooking = async (hold_id: number): Promise<Booking> => {
   });
   return response.data.booking;
 };
+
+export interface BookingDetail extends Booking {
+  tier_name: string;
+  price: string;
+  event_name: string;
+  event_start_at: string;
+  event_venue: string;
+}
+
+export const fetchBookings = async (): Promise<BookingDetail[]> => {
+  const response = await client.get<{ success: boolean; bookings: BookingDetail[] }>("/bookings");
+  return response.data.bookings;
+};
