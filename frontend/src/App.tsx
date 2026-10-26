@@ -12,6 +12,8 @@ import HoldPage from "./pages/HoldPage";
 import MyHolds from "./pages/MyHolds";
 import MyBookings from "./pages/MyBookings";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
+import CreateEvent from "./pages/CreateEvent";
+import ManageEvent from "./pages/ManageEvent";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,22 @@ function App() {
         element={
           <ProtectedRoute requiredRole="ORGANIZER">
             <OrganizerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizer/new"
+        element={
+          <ProtectedRoute requiredRole="ORGANIZER">
+            <CreateEvent />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizer/events/:id"
+        element={
+          <ProtectedRoute requiredRole="ORGANIZER">
+            <ManageEvent />
           </ProtectedRoute>
         }
       />
