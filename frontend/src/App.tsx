@@ -22,20 +22,26 @@ function App() {
   useEffect(() => {
     authApi
       .fetchMe()
-      .then((u) => login(u))
-      .catch(() => {}) // 401 just means "not logged in"
-      .finally(() => setLoading(false));
+      .then((user) => login(user))
+      .catch(() => {
+        // A failed authentication check can mean the user is logged out.
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [login]);
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading) {
+    return <p className="p-6">Loading...</p>;
+  }
 
   return (
     <Routes>
-      {/* Login and Register keep their own full-screen design, so no navbar */}
+      {/* Authentication pages use their own layouts. */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Everything inside this route gets the navbar */}
+      {/* Shared navbar and layout for attendee-facing pages. */}
       <Route element={<Layout />}>
         <Route path="/" element={<EventList />} />
         <Route path="/events/:id" element={<EventDetail />} />
@@ -48,6 +54,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/holds/:id"
           element={
@@ -56,6 +63,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/bookings"
           element={
@@ -65,6 +73,8 @@ function App() {
           }
         />
       </Route>
+
+      {/* Organizer pages. */}
       <Route
         path="/organizer"
         element={
@@ -73,6 +83,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/organizer/new"
         element={
@@ -81,6 +92,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/organizer/events/:id"
         element={

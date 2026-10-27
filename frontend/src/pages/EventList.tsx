@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchEvents, type Event } from "../api/events";
@@ -25,23 +24,28 @@ export default function EventList() {
 
   useEffect(() => {
     let ignore = false;
+
     setLoading(true);
     setError(null);
 
     fetchEvents(page, LIMIT)
       .then((data) => {
         if (ignore) return;
+
         setEvents(data.events);
         setHasMore(data.hasMore);
       })
       .catch(() => {
         if (ignore) return;
+
         setEvents([]);
         setHasMore(false);
         setError("Could not load events");
       })
       .finally(() => {
-        if (!ignore) setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -61,6 +65,7 @@ export default function EventList() {
             aria-hidden="true"
             className="absolute -right-16 -top-24 -z-10 h-80 w-80 rounded-full bg-fuchsia-500/30 blur-3xl"
           />
+
           <div
             aria-hidden="true"
             className="absolute -bottom-32 right-1/4 -z-10 h-72 w-72 rounded-full bg-indigo-400/30 blur-3xl"
@@ -89,7 +94,9 @@ export default function EventList() {
               className="mt-8 inline-flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-indigo-950 shadow-lg shadow-black/10 transition duration-300 hover:-translate-y-1 hover:bg-violet-50 hover:shadow-xl active:scale-95"
             >
               Explore events
-              <span aria-hidden="true" className="text-lg">↓</span>
+              <span aria-hidden="true" className="text-lg">
+                ↓
+              </span>
             </a>
           </div>
 
@@ -100,11 +107,14 @@ export default function EventList() {
               alt=""
               className="h-full w-full object-cover opacity-80"
             />
+
             <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/80 via-transparent to-violet-500/10" />
+
             <div className="absolute bottom-4 left-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-violet-200">
                 Make it memorable
               </p>
+
               <p className="mt-1 text-lg font-bold text-white">
                 Your next adventure
               </p>
@@ -119,9 +129,11 @@ export default function EventList() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-600">
                 Find your next plan
               </p>
+
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
                 Explore events
               </h2>
+
               <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
                 Good times start with the right event.
               </p>
@@ -141,7 +153,7 @@ export default function EventList() {
             </p>
           )}
 
-          {/* Skeletons on the very first load */}
+          {/* Loading skeletons */}
           {loading && events.length === 0 && (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: LIMIT }, (_, i) => (
@@ -150,20 +162,24 @@ export default function EventList() {
             </div>
           )}
 
+          {/* Empty state */}
           {!loading && !error && events.length === 0 && (
             <div className="animate-fade-up rounded-3xl border border-dashed border-violet-200 bg-white px-6 py-16 text-center shadow-sm">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-50 text-3xl">
                 ✨
               </div>
+
               <h3 className="mt-5 text-xl font-bold text-slate-900">
                 No upcoming events
               </h3>
+
               <p className="mt-2 text-sm text-slate-500">
                 Check back later for new experiences.
               </p>
             </div>
           )}
 
+          {/* Event cards */}
           {events.length > 0 && (
             <div
               className={`grid grid-cols-1 gap-6 transition-opacity duration-300 sm:grid-cols-2 lg:grid-cols-3 ${
@@ -211,6 +227,7 @@ export default function EventList() {
                       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-violet-200">
                         Featured experience
                       </p>
+
                       <h2 className="line-clamp-2 text-xl font-bold leading-snug text-white drop-shadow sm:text-2xl">
                         {event.name}
                       </h2>
@@ -224,6 +241,7 @@ export default function EventList() {
                     </p>
 
                     <div className="space-y-3 border-t border-slate-100 pt-4 text-sm">
+                      {/* Venue */}
                       <div className="flex items-start gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 transition-colors group-hover:bg-violet-100">
                           <svg
@@ -238,16 +256,19 @@ export default function EventList() {
                             <circle cx="12" cy="10" r="2.5" />
                           </svg>
                         </span>
+
                         <div className="min-w-0 pt-1.5">
                           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
                             Venue
                           </p>
+
                           <p className="mt-1 break-words font-medium text-slate-700">
                             {event.venue}
                           </p>
                         </div>
                       </div>
 
+                      {/* Date and time */}
                       <div className="flex items-start gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-fuchsia-50 text-fuchsia-600 transition-colors group-hover:bg-fuchsia-100">
                           <svg
@@ -262,10 +283,12 @@ export default function EventList() {
                             <path d="M16 3v4M8 3v4M3 10h18" />
                           </svg>
                         </span>
+
                         <div className="min-w-0 pt-1">
                           <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Date & time
+                            Date &amp; time
                           </p>
+
                           <p className="mt-1 font-semibold text-slate-800">
                             {new Date(event.start_at).toLocaleString()}
                           </p>
@@ -277,6 +300,7 @@ export default function EventList() {
                       <span className="text-xs font-medium text-slate-400">
                         Discover more
                       </span>
+
                       <span className="inline-flex items-center gap-2 text-sm font-bold text-violet-600 transition-all duration-300 group-hover:gap-3 group-hover:text-indigo-700">
                         View details
                         <span aria-hidden="true">→</span>
@@ -292,7 +316,8 @@ export default function EventList() {
           {(events.length > 0 || page > 1) && (
             <div className="mt-10 flex items-center justify-between border-t border-slate-200 pt-6">
               <button
-                onClick={() => setPage((p) => p - 1)}
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage - 1)}
                 disabled={page === 1 || loading}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
               >
@@ -304,7 +329,8 @@ export default function EventList() {
               </span>
 
               <button
-                onClick={() => setPage((p) => p + 1)}
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage + 1)}
                 disabled={!hasMore || loading}
                 className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-violet-200 transition duration-200 hover:-translate-y-0.5 hover:from-indigo-700 hover:to-violet-700 hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
               >
