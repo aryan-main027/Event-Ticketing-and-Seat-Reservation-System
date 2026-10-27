@@ -59,7 +59,8 @@ export default function HoldPage() {
     } catch (err) {
       if (isAxiosError<{ error?: string }>(err)) {
         if (!err.response) setConfirmError("Cannot connect to the server.");
-        else if (err.response.status === 409) setConfirmError(err.response.data?.error ?? "This hold can no longer be confirmed.");
+        else if (err.response.status === 409)
+          setConfirmError(err.response.data?.error ?? "This hold can no longer be confirmed.");
         else setConfirmError("Something went wrong.");
       } else {
         setConfirmError("Something went wrong.");
@@ -69,13 +70,21 @@ export default function HoldPage() {
     }
   };
 
-  if (loading) return <p className="p-6 text-slate-500">Loading...</p>;
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-10">
+        <div className="h-64 animate-pulse rounded-2xl bg-slate-200" />
+      </main>
+    );
+  }
 
   if (notFound) {
     return (
       <main className="mx-auto max-w-xl px-4 py-10">
         <p className="text-lg font-semibold text-slate-900">Hold not found</p>
-        <Link to="/" className="mt-3 inline-block text-indigo-600 hover:text-indigo-800">Back to events</Link>
+        <Link to="/" className="mt-3 inline-block text-indigo-600 hover:text-indigo-800">
+          Back to events
+        </Link>
       </main>
     );
   }
@@ -90,9 +99,23 @@ export default function HoldPage() {
     );
   }
 
-  const active = hold.status === "active";
-  const expired = !active ? hold.status === "expired" : secondsLeft === 0;
   const converted = hold.status === "converted";
+  const expired = hold.status === "expired" || (hold.status === "active" && secondsLeft === 0);
+
+  // total length of this hold in seconds (normally 600), used for the progress bar
+  const totalSeconds = Math.max(
+    1,
+    Math.round((new Date(hold.expiry_time).getTime() - new Date(hold.created_at).getTime()) / 1000)
+  );
+  const percent = Math.min(100, (secondsLeft / totalSeconds) * 100);
+
+  // green when plenty of time, amber under 3 minutes, red under 1 minute
+  const urgency =
+    secondsLeft > 180
+      ? { text: "text-emerald-600", bar: "bg-emerald-500" }
+      : secondsLeft > 60
+      ? { text: "text-amber-600", bar: "bg-amber-500" }
+      : { text: "text-red-600", bar: "bg-red-500" };
 
   const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const seconds = String(secondsLeft % 60).padStart(2, "0");
@@ -104,32 +127,49 @@ export default function HoldPage() {
         {hold.quantity} ticket{hold.quantity > 1 ? "s" : ""} held for tier #{hold.tier_id}.
       </p>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 text-center">
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         {converted ? (
-          <p className="font-medium text-green-700">This hold is already confirmed.</p>
+          <p className="font-medium text-emerald-700">This hold is already confirmed.</p>
         ) : expired ? (
           <p className="font-medium text-red-700">This hold has expired. The tickets were released.</p>
         ) : (
           <>
             <p className="text-sm text-slate-500">Time left to confirm</p>
-            <p className="mt-1 font-mono text-4xl font-bold text-slate-900">{minutes}:{seconds}</p>
+            <p
+              className={`mt-1 font-mono text-5xl font-bold transition-colors duration-500 ${urgency.text} ${
+                secondsLeft <= 60 ? "animate-pulse" : ""
+              }`}
+            >
+              {minutes}:{seconds}
+            </p>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ease-linear ${urgency.bar}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
           </>
         )}
       </div>
 
       {confirmError && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{confirmError}</p>
+        <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {confirmError}
+        </p>
       )}
 
       <div className="mt-6 flex gap-3">
         <button
           onClick={handleConfirm}
           disabled={confirming || expired || converted}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
           {confirming ? "Confirming..." : "Confirm booking"}
         </button>
-        <Link to="/" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+        <Link
+          to="/"
+          className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
           Back to events
         </Link>
       </div>

@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* One reusable entrance animation, used as the class "animate-fade-up" */
+@theme {
+  --animate-fade-up: fade-up 0.5s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
