@@ -57,7 +57,7 @@ checks expiry itself.
 | **cors** | Lets the frontend, which is on a different origin, call the API with cookies. Restricted to one configured origin. |
 | **express-rate-limit** | Protects against abuse: 10 requests per 15 minutes on `/auth`, 100 per minute on other routes. |
 | **Jest + supertest** | Automated tests: concurrency race, invariant check, and hold expiry. |
-| **React + TypeScript, Zustand, axios, Tailwind** | Frontend (planned, not built yet). |
+| **React + TypeScript, Zustand, axios, Tailwind** | Frontend  |
 
 ### Deliberately not used (in V1)
 
@@ -369,7 +369,6 @@ npm test
 - Draft events are hidden from everyone on public routes, including their organizer.
 - Rate-limit counters live in server memory, so they are per instance.
 - Integer ids are guessable (mitigated by ownership checks and 404 responses).
-- No frontend yet.
 
 ## Roadmap
 
